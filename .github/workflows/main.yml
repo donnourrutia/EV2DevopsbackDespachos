@@ -50,15 +50,20 @@ jobs:
           proxy_username: ${{ secrets.EC2_USER }}
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
           script: |
-            # Autenticar en ECR (Añadido sudo)
+            # 1. Moverse al directorio del backend en la máquina de AWS
+            cd ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+            
+            # 2. Autenticar en Amazon ECR
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
             
-            # Limpiar contenedor anterior (Añadido sudo)
-            sudo docker stop app-backend || true
-            sudo docker rm app-backend || true
-            
-            # Descargar nueva imagen (Añadido sudo)
+            # 3. Descargar la versión más nueva de la imagen del Backend
             sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
             
-            # Levantar el contenedor del backend (Ajustado al puerto 8080 de Spring Boot con sudo)
-            sudo docker run -d --name app-backend -p 8080:8080 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
+            # 4. Apagar y limpiar el entorno antiguo usando docker-compose
+            sudo docker-compose down || true
+            
+            # 5. Exportar la variable de AWS Account ID para el archivo docker-compose en vivo
+            export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+            
+            # 6. Levantar todo el stack (MySQL + Backend + Carga de Script) en segundo plano
+            sudo -E docker-compose up -d
