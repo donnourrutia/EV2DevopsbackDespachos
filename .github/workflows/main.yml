@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - Deploy
-      
-      
+
 jobs:
   build-and-push:
     name: Build y Push de la Imagen a ECR
