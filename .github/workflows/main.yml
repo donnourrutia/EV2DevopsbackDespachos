@@ -50,20 +50,34 @@ jobs:
           proxy_username: ${{ secrets.EC2_USER }}
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
           script: |
-            # 1. Moverse al directorio del backend en la máquina de AWS
-            cd ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
-            
-            # 2. Autenticar en Amazon ECR
+            # 1. Crear el directorio de despliegue si no existe y asegurar permisos
+            sudo mkdir -p /home/ec2-user/app
+            sudo chown -R ec2-user:ec2-user /home/ec2-user/app
+            cd /home/ec2-user/app
+
+            # 2. Instalar Docker Compose si no está presente en la máquina virtual
+            if ! command -v docker-compose &> /dev/null; then
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+              sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
+            fi
+
+            # 3. Descargar/Actualizar los archivos de configuración en el servidor desde la sesión de Git
+            cat << 'EOF' > docker-compose.yml
+            ${{ secrets.DOCKER_COMPOSE_CONTENT }}
+            EOF
+
+            cat << 'EOF' > innovatech_ev2.sql
+            ${{ secrets.SQL_SCRIPT_CONTENT }}
+            EOF
+
+            # 4. Autenticar en Amazon ECR
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
             
-            # 3. Descargar la versión más nueva de la imagen del Backend
+            # 5. Descargar la versión más nueva de tu imagen
             sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
             
-            # 4. Apagar y limpiar el entorno antiguo usando docker-compose
+            # 6. Apagar contenedores antiguos y levantar el nuevo stack
             sudo docker-compose down || true
-            
-            # 5. Exportar la variable de AWS Account ID para el archivo docker-compose en vivo
             export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
-            
-            # 6. Levantar todo el stack (MySQL + Backend + Carga de Script) en segundo plano
             sudo -E docker-compose up -d

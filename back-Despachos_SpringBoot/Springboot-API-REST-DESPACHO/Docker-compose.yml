@@ -14,16 +14,14 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      # Montaje para persistir los datos de la BD en la máquina EC2
       - mysql_data:/var/lib/mysql
-      # MÁGIA: Copia tu script SQL a la carpeta de inicialización de MySQL en Docker.
-      # Se ejecutará automáticamente la primera vez para crear las tablas y cargas.
       - ./innovatech_ev2.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user_innovatech", "-ppassword_innovatech"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # --- SERVICIO 2: TU BACKEND SPRING BOOT ---
   app-backend:
@@ -33,15 +31,20 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Inyección dinámica de variables mapeadas a tu application.properties
       - DB_HOST=db-mysql
       - DB_PORT=3306
       - DB_NAME=bddespachosinnovatech
       - DB_USER=user_innovatech
       - DB_PASSWORD=password_innovatech
+    networks:
+      - backend_network
     depends_on:
       db-mysql:
-        condition: service_healthy # Espera que MySQL esté 100% listo antes de arrancar el backend
+        condition: service_healthy
+
+networks:
+  backend_network:
+    driver: bridge
 
 volumes:
   mysql_data:
