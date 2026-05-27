@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - deploy
-      - main  # Añadido por seguridad por si estás probando en main
 
 jobs:
   build-and-push:
