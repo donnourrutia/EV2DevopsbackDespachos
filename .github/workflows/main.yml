@@ -3,8 +3,8 @@ name: CI/CD Pipeline Backend a AWS EC2 via ECR
 on:
   push:
     branches:
-      - Deploy
-    
+      - deploy
+
 jobs:
   build-and-push:
     name: Build y Push de la Imagen a ECR
@@ -18,18 +18,18 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN}}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1 
 
       - name: Iniciar sesión en Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
+ 
       - name: Build, tag, y push de la imagen Docker a ECR
-        working-directory: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+        working-directory: ./back-Ventas_SpringBoot/Springboot-API-REST
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: backenddespachoinnovatech 
+          ECR_REPOSITORY: backendventasinnovatech 
           IMAGE_TAG: latest
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -43,26 +43,28 @@ jobs:
       - name: Ejecutar despliegue automático vía Bastion/Frontend
         uses: appleboy/ssh-action@master
         with:
-       
           host: ${{ secrets.BACKEND_PRIVATE_IP }} 
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.AWS_PRIVATE_KEY }}
-          
-        
           proxy_host: ${{ secrets.FRONTEND_PUBLIC_IP }} 
           proxy_username: ${{ secrets.EC2_USER }}
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
-          
           script: |
-            # Autenticar en ECR
-            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            # 1. Instalar e iniciar Docker (vital si la máquina es nueva)
+            sudo yum update -y
+            sudo yum install docker -y
+            sudo service docker start
+            sudo usermod -aG docker ec2-user
+             
+            # 2. Autenticar en ECR (usando sudo)
+            aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
             
-            # Limpiar contenedor anterior
-            docker stop app-backend || true
-            docker rm app-backend || true
+            # 3. Limpiar contenedor anterior
+            sudo docker stop app-backend || true
+            sudo docker rm app-backend || true
             
-            # Descargar nueva imagen
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
+            # 4. Descargar nueva imagen
+            sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backendventasinnovatech:latest
             
-            # Levantar el contenedor del backend (Ajustado al puerto 8080 de Spring Boot)
-            docker run -d --name app-backend -p 8080:8080 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
+            # 5. Levantar el contenedor del backend
+            sudo docker run -d --name app-backend -p 8080:8080 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backendventasinnovatech:latest
