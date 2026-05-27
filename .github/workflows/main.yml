@@ -3,7 +3,7 @@ name: CI/CD Pipeline Backend a AWS EC2 via ECR
 on:
   push:
     branches:
-      - deploy
+      - Deploy
 
 
 jobs:
