@@ -2,6 +2,7 @@
 FROM maven:3.8.5-openjdk-17 AS builder
 WORKDIR /app
 
+
 # 1. Copiamos el archivo de configuración de Maven
 COPY pom.xml .
 
