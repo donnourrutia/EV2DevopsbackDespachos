@@ -120,7 +120,13 @@ jobs:
             # 6. Descargar la versión más nueva de tu imagen
             sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
             
-            # 7. Apagar contenedores antiguos y levantar el nuevo stack corregido
+            # 7. LIMPIEZA TOTAL: Remover contenedores antiguos que generen conflicto de nombres
             sudo docker-compose down || true
+            sudo docker stop app-backend || true
+            sudo docker rm -f app-backend || true
+            sudo docker stop mysql-db || true
+            sudo docker rm -f mysql-db || true
+            
+            # 8. Levantar el entorno limpio e inyectar el Account ID en segundo plano
             export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
             sudo -E docker-compose up -d
