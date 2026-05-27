@@ -5,7 +5,7 @@ on:
     branches:
       - deploy
 
-      
+
 jobs:
   build-and-push:
     name: Build y Push de la Imagen a ECR
@@ -27,10 +27,10 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
  
       - name: Build, tag, y push de la imagen Docker a ECR
-        working-directory: ./back-Ventas_SpringBoot/Springboot-API-REST
+        working-directory: ./back-Despachos_SpringBoot/Springboot-API-REST
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: backendventasinnovatech 
+          ECR_REPOSITORY: backenddespachoinnovatech
           IMAGE_TAG: latest
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -65,7 +65,7 @@ jobs:
             sudo docker rm app-backend || true
             
             # 4. Descargar nueva imagen
-            sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backendventasinnovatech:latest
+            sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
             
             # 5. Levantar el contenedor del backend
-            sudo docker run -d --name app-backend -p 8080:8080 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backendventasinnovatech:latest
+            sudo docker run -d --name app-backend -p 8080:8080 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
