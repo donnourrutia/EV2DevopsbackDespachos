@@ -3,8 +3,8 @@ name: CI/CD Pipeline Backend a AWS EC2 via ECR
 on:
   push:
     branches:
-      - Deploy
-
+      - deploy
+      - main  # Añadido por seguridad por si estás probando en main
 
 jobs:
   build-and-push:
@@ -56,8 +56,8 @@ jobs:
             sudo yum install docker -y
             sudo service docker start
             sudo usermod -aG docker ec2-user
-             
-            # 2. Autenticar en ECR (usando sudo)
+               
+            # 2. Autenticar en ECR
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
             
             # 3. Limpiar contenedor anterior
