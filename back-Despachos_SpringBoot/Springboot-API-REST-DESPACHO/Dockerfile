@@ -1,30 +1,29 @@
-# ---- Etapa 1: Dependencias y Build (Builder) ----
-FROM node:18-alpine AS builder
-
+# ---- Etapa 1: Construcción y dependencias (Builder) ----
+FROM maven:3.8.5-openjdk-17 AS builder
 WORKDIR /app
 
-# Copiamos los archivos de configuración
-COPY package*.json ./
+# 1. Copiamos el archivo de configuración de Maven
+COPY pom.xml .
 
-# Usamos install para asegurar que se descarguen todas las dependencias
-RUN npm install
+# 2. Descargamos las dependencias (esto se guarda en caché si no cambia el pom.xml)
+RUN mvn dependency:go-offline -B
 
-# Copiamos el resto del código fuente (index.js, routes, controllers, etc.)
-COPY . .
+# 3. Copiamos todo el código fuente del backend
+COPY src ./src
 
-# ---- Etapa 2: Producción ----
-FROM node:18-alpine
+# 4. Compilamos y generamos el archivo .jar (saltamos los tests para acelerar el pipeline)
+RUN mvn package -DskipTests
 
+# ---- Etapa 2: Imagen de producción ultra ligera ----
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
-# Copiamos todo desde la etapa builder
-COPY --from=builder /app ./
+# 5. Copiamos el .jar compilado desde la etapa anterior
+# (Buscamos cualquier jar en /target y lo renombramos a app.jar)
+COPY --from=builder /app/target/*.jar app.jar
 
-# Exponemos el puerto del backend
-EXPOSE 5000
+# 6. El puerto por defecto donde escucha Spring Boot
+EXPOSE 8080
 
-# Cambiamos al usuario "node" (no-root) por seguridad
-USER node
-
-# Comando para iniciar la aplicación
-CMD ["npm", "start"]
+# 7. Comando para ejecutar la aplicación Java
+ENTRYPOINT ["java", "-jar", "app.jar"]
