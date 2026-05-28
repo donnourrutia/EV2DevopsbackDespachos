@@ -36,34 +36,10 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
   deploy-to-ec2:
-    name: Despliegue en EC2 (Backend Privado)
+    name: Despliegue en EC2 (Backend Privado A)
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      # =======================================================================
-      # PASO DE DIAGNÓSTICO: Comprobar red e IPs antes del SSH
-      # =======================================================================
-      - name: Diagnosticar conectividad hacia AWS Bastion/Frontend
-        run: |
-          echo "=== [1] MI IP PÚBLICA DE GITHUB ACTIONS ==="
-          CURRENT_IP=$(curl -s https://ifconfig.me)
-          echo "La IP desde la que GitHub intentará conectar es: $CURRENT_IP"
-          echo "=========================================================="
-          
-          echo "=== [2] INTENTANDO CONECTAR AL PUERTO 22 DEL BASTION ==="
-          echo "Validando acceso hacia el host: ${{ secrets.FRONTEND_PUBLIC_IP }}"
-          
-          if nc -zv -w 7 ${{ secrets.FRONTEND_PUBLIC_IP }} 22; then
-            echo "--> ¡ÉXITO! El puerto 22 en AWS está abierto para GitHub."
-          else
-            echo "--> [ERROR TIMEOUT/REFUSED] El puerto 22 no responde."
-            echo "Revisa el Security Group de tu Frontend en AWS e intenta autorizar la IP: $CURRENT_IP"
-          fi
-          echo "=========================================================="
-
-      # =======================================================================
-      # PASO DE DESPLIEGUE CORREGIDO
-      # =======================================================================
       - name: Ejecutar despliegue automático vía Bastion/Frontend
         uses: appleboy/ssh-action@master
         with:
@@ -75,83 +51,71 @@ jobs:
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
           command_timeout: 20m
           script: |
-            # 1. Crear el directorio de despliegue si no existe y asegurar permisos
             sudo mkdir -p /home/ec2-user/app
             sudo chown -R ec2-user:ec2-user /home/ec2-user/app
             cd /home/ec2-user/app
 
-            # 2. Instalar Docker Compose si no está presente en la máquina virtual
+            # Instalar Docker Compose si no existe
             if ! command -v docker-compose &> /dev/null; then
-              sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
-              sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
             fi
 
-            # 3. Escribir el archivo docker-compose.yml garantizando estructura limpia
+            # Crear docker-compose.yml
             sudo rm -f docker-compose.yml
-            echo "version: '3.8'" > docker-compose.yml
-            echo "services:" >> docker-compose.yml
-            echo "  db-mysql:" >> docker-compose.yml
-            echo "    image: mysql:8.0" >> docker-compose.yml
-            echo "    container_name: mysql-db" >> docker-compose.yml
-            echo "    restart: always" >> docker-compose.yml
-            echo "    environment:" >> docker-compose.yml
-            echo "      MYSQL_ROOT_PASSWORD: admin123" >> docker-compose.yml
-            echo "      MYSQL_DATABASE: bd-despacho" >> docker-compose.yml
-            echo "      MYSQL_USER: user_innovatech" >> docker-compose.yml
-            echo "      MYSQL_PASSWORD: password_innovatech" >> docker-compose.yml
-            echo "    ports:" >> docker-compose.yml
-            echo "      - \"3306:3306\"" >> docker-compose.yml
-            echo "    volumes:" >> docker-compose.yml
-            echo "      - mysql_data:/var/lib/mysql" >> docker-compose.yml
-            echo "      - ./innovatech_ev2.sql:/docker-entrypoint-initdb.d/init.sql" >> docker-compose.yml
-            echo "    networks:" >> docker-compose.yml
-            echo "      - backend_network" >> docker-compose.yml
-            echo "    healthcheck:" >> docker-compose.yml
-            echo "      test: [\"CMD\", \"mysqladmin\", \"ping\", \"-h\", \"localhost\"]" >> docker-compose.yml
-            echo "      timeout: 20s" >> docker-compose.yml
-            echo "      retries: 10" >> docker-compose.yml
-            echo "  app-backend:" >> docker-compose.yml
-            echo "    image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest" >> docker-compose.yml
-            echo "    container_name: app-backend" >> docker-compose.yml
-            echo "    restart: always" >> docker-compose.yml
-            echo "    ports:" >> docker-compose.yml
-            echo "      - \"8080:8080\"" >> docker-compose.yml
-            echo "    environment:" >> docker-compose.yml
-            echo "      - DB_HOST=db-mysql" >> docker-compose.yml
-            echo "      - DB_PORT=3306" >> docker-compose.yml
-            echo "      - DB_NAME=bd-despacho" >> docker-compose.yml
-            echo "      - DB_USER=user_innovatech" >> docker-compose.yml
-            echo "      - DB_PASSWORD=password_innovatech" >> docker-compose.yml
-            echo "    networks:" >> docker-compose.yml
-            echo "      - backend_network" >> docker-compose.yml
-            echo "    depends_on:" >> docker-compose.yml
-            echo "      db-mysql:" >> docker-compose.yml
-            echo "        condition: service_healthy" >> docker-compose.yml
-            echo "networks:" >> docker-compose.yml
-            echo "  backend_network:" >> docker-compose.yml
-            echo "    driver: bridge" >> docker-compose.yml
-            echo "volumes:" >> docker-compose.yml
-            echo "  mysql_data:" >> docker-compose.yml
+            cat << 'EOF' > docker-compose.yml
+            version: '3.8'
+            services:
+              db-mysql:
+                image: mysql:8.0
+                container_name: mysql-db
+                restart: always
+                environment:
+                  MYSQL_ROOT_PASSWORD: admin123
+                  MYSQL_DATABASE: bd-despacho
+                  MYSQL_USER: user_innovatech
+                  MYSQL_PASSWORD: password_innovatech
+                ports:
+                  - "3306:3306"
+                volumes:
+                  - mysql_data:/var/lib/mysql
+                networks:
+                  - backend_network
+                healthcheck:
+                  test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin123"]
+                  interval: 10s
+                  timeout: 20s
+                  retries: 10
 
-            # 4. Escribir el script SQL desde el secreto de GitHub
-            cat << 'EOF' > innovatech_ev2.sql
-            ${{ secrets.SQL_SCRIPT_CONTENT }}
+              app-backend:
+                image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
+                container_name: app-backend
+                restart: always
+                ports:
+                  - "8080:8080"
+                environment:
+                  - DB_HOST=db-mysql
+                  - DB_PORT=3306
+                  - DB_NAME=bd-despacho
+                  - DB_USER=user_innovatech
+                  - DB_PASSWORD=password_innovatech
+                  - SPRING_JPA_HIBERNATE_DDL_AUTO=create
+                networks:
+                  - backend_network
+                depends_on:
+                  db-mysql:
+                    condition: service_healthy
+
+            networks:
+              backend_network:
+                driver: bridge
+            volumes:
+              mysql_data:
             EOF
 
-            # 5. Autenticar en Amazon ECR
+            # Autenticar, limpiar y levantar
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-            
-            # 6. Descargar la versión más nueva de tu imagen
             sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
-            
-            # 7. LIMPIEZA TOTAL: Remover contenedores antiguos que generen conflicto de nombres
             sudo docker-compose down || true
-            sudo docker stop app-backend || true
-            sudo docker rm -f app-backend || true
-            sudo docker stop mysql-db || true
-            sudo docker rm -f mysql-db || true
-            
-            # 8. Levantar el entorno limpio e inyectar el Account ID en segundo plano
-            export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+            sudo docker rm -f app-backend mysql-db || true
             sudo -E docker-compose up -d
