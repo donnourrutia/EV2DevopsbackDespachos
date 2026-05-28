@@ -4,26 +4,27 @@ on:
   push:
     branches:
       - Deploy
-
+    
+      
 jobs:
   build-and-push:
     name: Build y Push de la Imagen a ECR
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Configurar Credenciales de AWS
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          # Eliminamos aws-session-token ya que usas claves fijas de IAM
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1 
 
       - name: Iniciar sesión en Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build, tag, y push de la imagen Docker a ECR
         working-directory: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
@@ -41,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ejecutar despliegue automático vía Bastion/Frontend
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.BACKEND_PRIVATE_IP }} 
           username: ${{ secrets.EC2_USER }}
@@ -62,12 +63,7 @@ jobs:
               sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose || true
             fi
 
-            # 3. Escribir el script SQL desde el secreto ANTES de levantar docker-compose
-            cat << 'EOF' > innovatech_ev2.sql
-            ${{ secrets.SQL_SCRIPT_CONTENT }}
-            EOF
-
-            # 4. Escribir el archivo docker-compose.yml garantizando estructura limpia
+            # 3. Escribir el archivo docker-compose.yml garantizando estructura limpia
             sudo rm -f docker-compose.yml
             echo "version: '3.8'" > docker-compose.yml
             echo "services:" >> docker-compose.yml
@@ -113,6 +109,11 @@ jobs:
             echo "    driver: bridge" >> docker-compose.yml
             echo "volumes:" >> docker-compose.yml
             echo "  mysql_data:" >> docker-compose.yml
+
+            # 4. Escribir el script SQL desde el secreto de GitHub
+            cat << 'EOF' > innovatech_ev2.sql
+            ${{ secrets.SQL_SCRIPT_CONTENT }}
+            EOF
 
             # 5. Autenticar en Amazon ECR
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
