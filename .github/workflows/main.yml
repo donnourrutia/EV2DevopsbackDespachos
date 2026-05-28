@@ -5,7 +5,6 @@ on:
     branches:
       - Deploy
 
-      
 jobs:
   build-and-push:
     name: Build y Push de la Imagen a ECR
@@ -54,7 +53,6 @@ jobs:
           echo "=== [2] INTENTANDO CONECTAR AL PUERTO 22 DEL BASTION ==="
           echo "Validando acceso hacia el host: ${{ secrets.FRONTEND_PUBLIC_IP }}"
           
-          # Realiza un escaneo de puerto con timeout de 7 segundos
           if nc -zv -w 7 ${{ secrets.FRONTEND_PUBLIC_IP }} 22; then
             echo "--> ¡ÉXITO! El puerto 22 en AWS está abierto para GitHub."
           else
@@ -64,7 +62,7 @@ jobs:
           echo "=========================================================="
 
       # =======================================================================
-      # PASO DE DESPLIEGUE ORIGINAL
+      # PASO DE DESPLIEGUE CORREGIDO
       # =======================================================================
       - name: Ejecutar despliegue automático vía Bastion/Frontend
         uses: appleboy/ssh-action@master
@@ -130,10 +128,10 @@ jobs:
             echo "    depends_on:" >> docker-compose.yml
             echo "      db-mysql:" >> docker-compose.yml
             echo "        condition: service_healthy" >> docker-compose.yml
-            networks: >> docker-compose.yml
+            echo "networks:" >> docker-compose.yml
             echo "  backend_network:" >> docker-compose.yml
             echo "    driver: bridge" >> docker-compose.yml
-            volumes: >> docker-compose.yml
+            echo "volumes:" >> docker-compose.yml
             echo "  mysql_data:" >> docker-compose.yml
 
             # 4. Escribir el script SQL desde el secreto de GitHub
