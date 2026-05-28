@@ -40,7 +40,7 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Ejecutar despliegue automático vía Bastion/Frontend
+      - name: Ejecutar despliegue automático vía Bastion
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.BACKEND_PRIVATE_IP }} 
@@ -51,18 +51,12 @@ jobs:
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
           command_timeout: 20m
           script: |
+            set -x
             sudo mkdir -p /home/ec2-user/app
             sudo chown -R ec2-user:ec2-user /home/ec2-user/app
             cd /home/ec2-user/app
 
-            # Instalar Docker Compose si no existe
-            if ! command -v docker-compose &> /dev/null; then
-              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              sudo chmod +x /usr/local/bin/docker-compose
-            fi
-
-            # Crear docker-compose.yml
-            sudo rm -f docker-compose.yml
+            # Crear docker-compose.yml limpio
             cat << 'EOF' > docker-compose.yml
             version: '3.8'
             services:
@@ -84,8 +78,8 @@ jobs:
                 healthcheck:
                   test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin123"]
                   interval: 10s
-                  timeout: 20s
-                  retries: 10
+                  timeout: 5s
+                  retries: 5
 
               app-backend:
                 image: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
@@ -99,7 +93,8 @@ jobs:
                   - DB_NAME=bd-despacho
                   - DB_USER=user_innovatech
                   - DB_PASSWORD=password_innovatech
-                  - SPRING_JPA_HIBERNATE_DDL_AUTO=create
+                  - SPRING_SQL_INIT_MODE=never
+                  - SPRING_JPA_HIBERNATE_DDL_AUTO=update
                 networks:
                   - backend_network
                 depends_on:
@@ -113,9 +108,8 @@ jobs:
               mysql_data:
             EOF
 
-            # Autenticar, limpiar y levantar
+            # Ejecutar despliegue
             aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
             sudo docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/backenddespachoinnovatech:latest
             sudo docker-compose down || true
-            sudo docker rm -f app-backend mysql-db || true
-            sudo -E docker-compose up -d
+            sudo docker-compose up -d
