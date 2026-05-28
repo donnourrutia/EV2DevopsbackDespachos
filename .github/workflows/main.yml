@@ -50,6 +50,7 @@ jobs:
           proxy_host: ${{ secrets.FRONTEND_PUBLIC_IP }} 
           proxy_username: ${{ secrets.EC2_USER }}
           proxy_key: ${{ secrets.AWS_PRIVATE_KEY }}
+          command_timeout: 20m
           script: |
             # 1. Crear el directorio de despliegue si no existe y asegurar permisos
             sudo mkdir -p /home/ec2-user/app
