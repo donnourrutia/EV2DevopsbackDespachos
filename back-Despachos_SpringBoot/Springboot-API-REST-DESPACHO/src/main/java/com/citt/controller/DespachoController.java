@@ -26,14 +26,20 @@ public class DespachoController {
     @Operation(summary = "Crear un nuevo despacho")
     @PostMapping
     public ResponseEntity<Despacho> crearDespacho(
-            @RequestBody Despacho despacho){
+            @Valid @RequestBody Despacho despacho) {
+        
+        // 1. Guardamos primero en la base de datos para generar el idDespacho real
+        Despacho nuevoDespacho = despachoService.saveDespacho(despacho);
+        
+        // 2. Ahora construimos la URI utilizando el ID que MySQL le acaba de asignar
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{idDespacho}")
-                .buildAndExpand(despacho.getIdDespacho())
+                .buildAndExpand(nuevoDespacho.getIdDespacho())
                 .toUri();
-        despachoService.saveDespacho(despacho);
-        return ResponseEntity.created(location).body(despacho);
+        
+        // 3. Retornamos HTTP 201 Created con el objeto persistido en el cuerpo
+        return ResponseEntity.created(location).body(nuevoDespacho);
     }
 
     @Operation(summary = "Actualizar un despacho existente")
