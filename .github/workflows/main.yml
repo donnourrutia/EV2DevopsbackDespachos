@@ -96,8 +96,8 @@ jobs:
             echo "    container_name: mysql-db" >> docker-compose.yml
             echo "    restart: always" >> docker-compose.yml
             echo "    environment:" >> docker-compose.yml
-            echo "      MYSQL_ROOT_PASSWORD: rootpassword" >> docker-compose.yml
-            echo "      MYSQL_DATABASE: bddespachosinnovatech" >> docker-compose.yml
+            echo "      MYSQL_ROOT_PASSWORD: admin123" >> docker-compose.yml
+            echo "      MYSQL_DATABASE: bd-despacho" >> docker-compose.yml
             echo "      MYSQL_USER: user_innovatech" >> docker-compose.yml
             echo "      MYSQL_PASSWORD: password_innovatech" >> docker-compose.yml
             echo "    ports:" >> docker-compose.yml
@@ -120,7 +120,7 @@ jobs:
             echo "    environment:" >> docker-compose.yml
             echo "      - DB_HOST=db-mysql" >> docker-compose.yml
             echo "      - DB_PORT=3306" >> docker-compose.yml
-            echo "      - DB_NAME=bddespachosinnovatech" >> docker-compose.yml
+            echo "      - DB_NAME=bd-despacho" >> docker-compose.yml
             echo "      - DB_USER=user_innovatech" >> docker-compose.yml
             echo "      - DB_PASSWORD=password_innovatech" >> docker-compose.yml
             echo "    networks:" >> docker-compose.yml
