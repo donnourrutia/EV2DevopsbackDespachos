@@ -1,4 +1,4 @@
-# Microservicio Backend - Despachos | ITPCARGO 🚚
+# Microservicio Backend - Despachos EV2 Innovatech 🚚
 
 Este repositorio aloja el microservicio de **Despachos** para el sistema ITPCARGO. Su objetivo principal es la logística, permitiendo la asignación de camiones, registro de direcciones de entrega y el seguimiento de los intentos de entrega asociados a una orden de compra.
 
