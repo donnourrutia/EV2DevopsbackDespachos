@@ -8,7 +8,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: bd-despacho
+      MYSQL_DATABASE: bddespachosinnovatech
       MYSQL_USER: user_innovatech
       MYSQL_PASSWORD: password_innovatech
     ports:
@@ -33,7 +33,7 @@ services:
     environment:
       - DB_HOST=db-mysql
       - DB_PORT=3306
-      - DB_NAME=bd-despacho
+      - DB_NAME=bddespachosinnovatech
       - DB_USER=user_innovatech
       - DB_PASSWORD=password_innovatech
     networks:
